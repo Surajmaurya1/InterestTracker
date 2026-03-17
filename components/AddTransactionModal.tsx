@@ -80,7 +80,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest (%)</label>
+                <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest (₹ / day)</label>
                 <input
                   required
                   type="number"

@@ -26,3 +26,12 @@ export async function addTransaction(transaction: NewTransaction) {
   if (error) throw error;
   return data as Transaction;
 }
+
+export async function deleteTransaction(id: string) {
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}

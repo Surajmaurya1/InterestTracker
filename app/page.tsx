@@ -7,7 +7,7 @@ import ChartCard from "@/components/ChartCard";
 import TransactionList from "@/components/TransactionList";
 import FloatingButton from "@/components/FloatingButton";
 import AddTransactionModal from "@/components/AddTransactionModal";
-import { fetchTransactions } from "@/lib/supabase";
+import { fetchTransactions, deleteTransaction } from "@/lib/supabase";
 import { Transaction } from "@/types/transaction";
 
 export default function Home() {
@@ -23,6 +23,18 @@ export default function Home() {
       console.error("Error loading transactions:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      // Optimistic update
+      setTransactions(transactions.filter(t => t.id !== id));
+      await deleteTransaction(id);
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      alert("Failed to delete transaction");
+      loadData(); // Revert on error
     }
   };
 
@@ -65,14 +77,14 @@ export default function Home() {
             <span className="text-2xl font-semibold">{stats.count}</span>
           </div>
           <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-5 flex flex-col gap-1">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Avg. Interest</span>
-            <span className="text-2xl font-semibold">{stats.avgInterest}%</span>
+            <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Avg. Daily Interest</span>
+            <span className="text-2xl font-semibold">₹{stats.avgInterest}</span>
           </div>
         </section>
 
         {/* Recent Transactions */}
         <section>
-          <TransactionList transactions={transactions} />
+          <TransactionList transactions={transactions} onDelete={handleDelete} />
         </section>
       </div>
 
