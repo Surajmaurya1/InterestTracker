@@ -22,7 +22,7 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose }:
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#111113] border border-[#1A1A1D] rounded-3xl p-8 z-50 animate-in zoom-in-95 duration-200 shadow-2xl outline-none">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-semibold">Transaction Details</h2>
+            <Dialog.Title className="text-xl font-semibold">Transaction Details</Dialog.Title>
             <Dialog.Close className="p-2 text-zinc-400 hover:text-white transition-colors">
               <X size={20} />
             </Dialog.Close>

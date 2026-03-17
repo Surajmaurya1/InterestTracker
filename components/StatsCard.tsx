@@ -1,3 +1,5 @@
+"use client";
+
 interface StatsCardProps {
   label: string;
   value: string | number;

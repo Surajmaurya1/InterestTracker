@@ -1,3 +1,5 @@
+"use client";
+
 import { User, Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Transaction } from "@/types/transaction";
 import { format, parseISO } from "date-fns";

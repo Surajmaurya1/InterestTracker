@@ -1,3 +1,5 @@
+"use client";
+
 import { Transaction } from "@/types/transaction";
 import TransactionItem from "./TransactionItem";
 
