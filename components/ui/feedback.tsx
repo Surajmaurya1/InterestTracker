@@ -44,6 +44,8 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [confirmQueue, setConfirmQueue] = useState<PendingConfirm[]>([]);
   const [activeConfirm, setActiveConfirm] = useState<PendingConfirm | null>(null);
   const nextToastId = useRef(1);
+  const activeConfirmRef = useRef<PendingConfirm | null>(null);
+  const confirmQueueRef = useRef<PendingConfirm[]>([]);
 
   const showToast = useCallback((options: Omit<ToastItem, "id">) => {
     const id = nextToastId.current++;
@@ -68,6 +70,14 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     setConfirmQueue(rest);
   }, [activeConfirm, confirmQueue]);
 
+  useEffect(() => {
+    activeConfirmRef.current = activeConfirm;
+  }, [activeConfirm]);
+
+  useEffect(() => {
+    confirmQueueRef.current = confirmQueue;
+  }, [confirmQueue]);
+
   const handleConfirmClose = useCallback((value: boolean) => {
     if (!activeConfirm) return;
     activeConfirm.resolve(value);
@@ -76,12 +86,12 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     return () => {
-      if (activeConfirm) {
-        activeConfirm.resolve(false);
+      if (activeConfirmRef.current) {
+        activeConfirmRef.current.resolve(false);
       }
-      confirmQueue.forEach((pending) => pending.resolve(false));
+      confirmQueueRef.current.forEach((pending) => pending.resolve(false));
     };
-  }, [activeConfirm, confirmQueue]);
+  }, []);
 
   const value = useMemo(() => ({ showToast, confirm }), [showToast, confirm]);
 
@@ -124,19 +134,20 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 
       <AnimatePresence>
         {activeConfirm && (
-          <div className="fixed inset-0 z-[1250] flex items-center justify-center px-4">
+          <div className="pointer-events-auto fixed inset-0 z-[1250] flex items-center justify-center px-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              className="pointer-events-auto absolute inset-0 bg-black/70 backdrop-blur-sm"
               onClick={() => handleConfirmClose(false)}
             />
             <motion.div
               initial={{ opacity: 0, y: 24, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              className="relative z-10 w-full max-w-sm rounded-[28px] border border-white/10 bg-[#111113]/95 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+              onClick={(e) => e.stopPropagation()}
+              className="pointer-events-auto relative z-10 w-full max-w-sm rounded-[28px] border border-white/10 bg-[#111113]/95 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
             >
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-white">
                 <AlertTriangle size={20} className={activeConfirm.options.tone === "danger" ? "text-red-400" : "text-white"} />
@@ -148,14 +159,14 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => handleConfirmClose(false)}
-                  className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                  className="pointer-events-auto flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
                   {activeConfirm.options.cancelLabel ?? "Cancel"}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleConfirmClose(true)}
-                  className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
+                  className={`pointer-events-auto flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
                     activeConfirm.options.tone === "danger"
                       ? "bg-red-500 text-white hover:bg-red-400"
                       : "bg-white text-black hover:bg-zinc-200"

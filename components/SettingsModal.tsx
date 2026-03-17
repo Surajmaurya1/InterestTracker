@@ -80,8 +80,23 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
     });
     if (!approved) return;
 
-    await supabase.auth.signOut();
-    setIsOpen(false);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) throw error;
+
+      setIsOpen(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Error signing out:", err);
+      showToast({
+        tone: "error",
+        title: "Could not sign out",
+        message: "Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
