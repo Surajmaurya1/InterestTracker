@@ -67,7 +67,7 @@ export default function Home() {
       confirmLabel: "Delete",
       tone: "danger",
     });
-    if (!approved) return;
+    if (!approved) return false;
 
     const previous = transactions;
     setTransactions((current) => current.filter((item) => item.id !== id));
@@ -75,6 +75,10 @@ export default function Home() {
     try {
       await deleteTransaction(id);
       showToast({ tone: "success", title: "Transaction deleted" });
+      if (selectedTransaction?.id === id) {
+        setSelectedTransaction(null);
+      }
+      return true;
     } catch (error) {
       console.error("Error deleting transaction:", error);
       setTransactions(previous);
@@ -83,8 +87,9 @@ export default function Home() {
         title: "Delete failed",
         message: "The transaction could not be removed.",
       });
+      return false;
     }
-  }, [confirm, showToast, transactions]);
+  }, [confirm, selectedTransaction?.id, showToast, transactions]);
 
   useEffect(() => {
     if (session) {

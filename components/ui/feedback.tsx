@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 
@@ -21,6 +21,11 @@ interface ConfirmOptions {
   tone?: "danger" | "default";
 }
 
+interface PendingConfirm {
+  options: ConfirmOptions;
+  resolve: (value: boolean) => void;
+}
+
 interface FeedbackContextValue {
   showToast: (options: Omit<ToastItem, "id">) => void;
   confirm: (options: ConfirmOptions) => Promise<boolean>;
@@ -36,8 +41,8 @@ const TOAST_STYLES: Record<ToastTone, string> = {
 
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [confirmOptions, setConfirmOptions] = useState<ConfirmOptions | null>(null);
-  const resolveRef = useRef<((value: boolean) => void) | null>(null);
+  const [confirmQueue, setConfirmQueue] = useState<PendingConfirm[]>([]);
+  const [activeConfirm, setActiveConfirm] = useState<PendingConfirm | null>(null);
   const nextToastId = useRef(1);
 
   const showToast = useCallback((options: Omit<ToastItem, "id">) => {
@@ -50,17 +55,33 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const confirm = useCallback((options: ConfirmOptions) => {
-    setConfirmOptions(options);
     return new Promise<boolean>((resolve) => {
-      resolveRef.current = resolve;
+      setConfirmQueue((current) => [...current, { options, resolve }]);
     });
   }, []);
 
+  useEffect(() => {
+    if (activeConfirm || confirmQueue.length === 0) return;
+
+    const [nextConfirm, ...rest] = confirmQueue;
+    setActiveConfirm(nextConfirm);
+    setConfirmQueue(rest);
+  }, [activeConfirm, confirmQueue]);
+
   const handleConfirmClose = useCallback((value: boolean) => {
-    resolveRef.current?.(value);
-    resolveRef.current = null;
-    setConfirmOptions(null);
-  }, []);
+    if (!activeConfirm) return;
+    activeConfirm.resolve(value);
+    setActiveConfirm(null);
+  }, [activeConfirm]);
+
+  useEffect(() => {
+    return () => {
+      if (activeConfirm) {
+        activeConfirm.resolve(false);
+      }
+      confirmQueue.forEach((pending) => pending.resolve(false));
+    };
+  }, [activeConfirm, confirmQueue]);
 
   const value = useMemo(() => ({ showToast, confirm }), [showToast, confirm]);
 
@@ -102,7 +123,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
       </div>
 
       <AnimatePresence>
-        {confirmOptions && (
+        {activeConfirm && (
           <div className="fixed inset-0 z-[1250] flex items-center justify-center px-4">
             <motion.div
               initial={{ opacity: 0 }}
@@ -118,10 +139,10 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
               className="relative z-10 w-full max-w-sm rounded-[28px] border border-white/10 bg-[#111113]/95 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
             >
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-white">
-                <AlertTriangle size={20} className={confirmOptions.tone === "danger" ? "text-red-400" : "text-white"} />
+                <AlertTriangle size={20} className={activeConfirm.options.tone === "danger" ? "text-red-400" : "text-white"} />
               </div>
-              <h3 className="text-lg font-semibold text-white">{confirmOptions.title}</h3>
-              {confirmOptions.message && <p className="mt-2 text-sm leading-6 text-zinc-400">{confirmOptions.message}</p>}
+              <h3 className="text-lg font-semibold text-white">{activeConfirm.options.title}</h3>
+              {activeConfirm.options.message && <p className="mt-2 text-sm leading-6 text-zinc-400">{activeConfirm.options.message}</p>}
 
               <div className="mt-6 flex gap-3">
                 <button
@@ -129,18 +150,18 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
                   onClick={() => handleConfirmClose(false)}
                   className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
-                  {confirmOptions.cancelLabel ?? "Cancel"}
+                  {activeConfirm.options.cancelLabel ?? "Cancel"}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleConfirmClose(true)}
                   className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
-                    confirmOptions.tone === "danger"
+                    activeConfirm.options.tone === "danger"
                       ? "bg-red-500 text-white hover:bg-red-400"
                       : "bg-white text-black hover:bg-zinc-200"
                   }`}
                 >
-                  {confirmOptions.confirmLabel ?? "Confirm"}
+                  {activeConfirm.options.confirmLabel ?? "Confirm"}
                 </button>
               </div>
             </motion.div>

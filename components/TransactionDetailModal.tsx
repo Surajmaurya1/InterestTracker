@@ -10,7 +10,7 @@ interface TransactionDetailModalProps {
   transaction: Transaction | null;
   isOpen: boolean;
   onClose: () => void;
-  onDelete: (transactionId: string) => void;
+  onDelete: (transactionId: string) => Promise<boolean>;
 }
 
 export default function TransactionDetailModal({
@@ -98,9 +98,11 @@ export default function TransactionDetailModal({
 
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onDelete(transaction.id);
+                onClick={async () => {
+                  const deleted = await onDelete(transaction.id);
+                  if (deleted) {
+                    onClose();
+                  }
                 }}
                 className="h-14 w-full rounded-2xl bg-red-500 font-bold text-white transition-all hover:bg-red-400 active:scale-95"
               >
