@@ -155,6 +155,21 @@ export default function Home() {
               onItemClick={setSelectedTransaction}
             />
           </section>
+
+          {/* Footer */}
+          <footer className="text-center py-4 mt-2">
+            <p className="text-[11px] text-zinc-600 font-medium">
+              Made with <span className="text-zinc-600">🤍</span> by{" "}
+              <a 
+                href="https://www.linkedin.com/in/suraj-maurya-33a91325a" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-zinc-600 hover:text-white transition-colors decoration-zinc-700"
+              >
+                Suraj Maurya
+              </a>
+            </p>
+          </footer>
         </div>
 
         <FloatingButton onClick={() => setIsModalOpen(true)} />
