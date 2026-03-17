@@ -39,7 +39,9 @@ export default function Header({ onSearch, onSettings }: HeaderProps) {
       ) : (
         <>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight">Interest Tracker</h1>
+            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">
+              Welcome Back
+            </h1>
           </div>
           
           <div className="flex items-center gap-2">
