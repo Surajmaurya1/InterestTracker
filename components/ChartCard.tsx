@@ -1,44 +1,84 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import { useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip, CartesianGrid } from "recharts";
 import { Transaction } from "@/types/transaction";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays, isSameDay } from "date-fns";
 
 interface ChartCardProps {
   transactions: Transaction[];
 }
 
 export default function ChartCard({ transactions }: ChartCardProps) {
-  // Group transactions by date for the chart
-  const chartData = transactions.reduce((acc: any[], curr) => {
-    const date = format(parseISO(curr.date), "MMM dd");
-    const existing = acc.find((item) => item.date === date);
-    if (existing) {
-      existing.amount += Number(curr.amount);
-    } else {
-      acc.push({ date, amount: Number(curr.amount) });
-    }
-    return acc;
-  }, []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(-7);
+  // Generate last 7 days to ensure chart always has data points
+  const chartData = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 6 - i));
+    
+    return days.map(day => {
+      const dayStr = format(day, "MMM dd");
+      const total = transactions.reduce((acc, curr) => {
+        if (isSameDay(parseISO(curr.date), day)) {
+          return acc + Number(curr.amount);
+        }
+        return acc;
+      }, 0);
+      
+      return {
+        date: dayStr,
+        amount: total
+      };
+    });
+  }, [transactions]);
 
   return (
-    <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 h-[240px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData}>
-          <XAxis 
-            dataKey="date" 
-            axisLine={false} 
-            tickLine={false} 
-            tick={{ fill: '#71717a', fontSize: 12 }}
-            dy={10}
-          />
-          <Bar dataKey="amount" radius={[6, 6, 6, 6]} barSize={32}>
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill="#E5E5E5" />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 h-[280px]">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Lending Activity</h3>
+        <span className="text-[10px] text-zinc-600 font-medium">Last 7 Days</span>
+      </div>
+      
+      <div className="h-[200px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="#1A1A1D" strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="date" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#52525b', fontSize: 10, fontWeight: 500 }}
+              dy={10}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#52525b', fontSize: 10, fontWeight: 500 }}
+              tickFormatter={(value) => `₹${value > 999 ? (value/1000).toFixed(0) + 'k' : value}`}
+            />
+            <Tooltip 
+              cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+              contentStyle={{ 
+                backgroundColor: '#111113', 
+                border: '1px solid #1A1A1D', 
+                borderRadius: '12px',
+                fontSize: '12px',
+                color: '#fff'
+              }}
+              itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+              formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Amount']}
+              labelStyle={{ color: '#71717a', marginBottom: '4px' }}
+            />
+            <Bar dataKey="amount" radius={[4, 4, 4, 4]} barSize={24}>
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.amount > 0 ? "#FFFFFF" : "#1A1A1D"} 
+                  fillOpacity={entry.amount > 0 ? 1 : 0.5}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
