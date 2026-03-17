@@ -6,6 +6,7 @@ import { X, Plus } from "lucide-react";
 import { addTransaction } from "@/lib/supabase";
 import { NewTransaction } from "@/types/transaction";
 import { INTEREST_PERIODS } from "@/lib/interest";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface AddTransactionModalProps {
   onSuccess: () => void;
@@ -14,6 +15,7 @@ interface AddTransactionModalProps {
 }
 
 export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: AddTransactionModalProps) {
+  const { showToast } = useFeedback();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<NewTransaction>({
     person_name: "",
@@ -30,19 +32,19 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
 
     const name = formData.person_name.trim();
     if (!name) {
-      alert("Please enter a person name");
+      showToast({ tone: "error", title: "Person name required", message: "Add a name before saving this transaction." });
       return;
     }
     if (formData.amount <= 0) {
-      alert("Amount must be greater than 0");
+      showToast({ tone: "error", title: "Invalid amount", message: "Amount must be greater than zero." });
       return;
     }
     if (formData.type === "lending" && formData.interest < 0) {
-      alert("Interest cannot be negative");
+      showToast({ tone: "error", title: "Invalid interest", message: "Interest cannot be negative." });
       return;
     }
     if (formData.type === "lending" && formData.interest_mode === "percentage" && formData.interest > 100) {
-      alert("Interest percentage cannot be greater than 100");
+      showToast({ tone: "error", title: "Interest too high", message: "Percentage interest cannot be greater than 100%." });
       return;
     }
 
@@ -60,9 +62,14 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
         type: "lending",
         date: new Date().toISOString().split("T")[0],
       });
+      showToast({ tone: "success", title: "Transaction added", message: "Your lending entry has been saved." });
     } catch (error) {
       console.error("Error adding transaction:", error);
-      alert(error instanceof Error ? error.message : "Failed to add transaction");
+      showToast({
+        tone: "error",
+        title: "Could not add transaction",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -71,21 +78,21 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
   return (
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 sm:p-8 z-50 animate-in zoom-in-95 duration-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-[#1A1A1D] bg-[#111113] p-6 shadow-2xl animate-in zoom-in-95 duration-200 sm:p-8">
+          <div className="mb-6 flex items-center justify-between">
             <Dialog.Title className="text-xl font-semibold">New Transaction</Dialog.Title>
-            <Dialog.Close className="p-2 text-zinc-400 hover:text-white transition-colors">
+            <Dialog.Close className="p-2 text-zinc-400 transition-colors hover:text-white">
               <X size={20} />
             </Dialog.Close>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <div className="flex bg-[#1A1A1D] p-1 rounded-2xl">
+            <div className="flex rounded-2xl bg-[#1A1A1D] p-1">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: "lending" })}
-                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all ${
                   formData.type === "lending"
                     ? "bg-white text-black shadow-lg"
                     : "text-zinc-500 hover:text-white"
@@ -96,7 +103,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: "collection", interest: 0, interest_mode: "fixed", interest_period: "day" })}
-                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all ${
                   formData.type === "collection"
                     ? "bg-white text-black shadow-lg"
                     : "text-zinc-500 hover:text-white"
@@ -107,13 +114,13 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Person Name</label>
+              <label className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-500">Person Name</label>
               <input
                 required
                 type="text"
                 maxLength={100}
                 placeholder={formData.type === "lending" ? "Who are you lending to?" : "From whom did you receive?"}
-                className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
+                className="rounded-2xl border border-transparent bg-[#1A1A1D] px-4 py-3 font-medium text-white outline-none transition-all placeholder:text-zinc-600 focus:border-zinc-700"
                 value={formData.person_name}
                 onChange={(e) => setFormData({ ...formData, person_name: e.target.value })}
               />
@@ -121,14 +128,14 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
 
             <div className="grid grid-cols-1 gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">
-                  {formData.type === "lending" ? "Amount Lent (₹)" : "Amount Received (₹)"}
+                <label className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-500">
+                  {formData.type === "lending" ? "Amount Lent (\u20B9)" : "Amount Received (\u20B9)"}
                 </label>
                 <input
                   required
                   type="number"
                   placeholder="0"
-                  className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
+                  className="rounded-2xl border border-transparent bg-[#1A1A1D] px-4 py-3 font-medium text-white outline-none transition-all placeholder:text-zinc-600 focus:border-zinc-700"
                   value={formData.amount || ""}
                   onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                 />
@@ -137,12 +144,12 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
               {formData.type === "lending" && (
                 <div className="flex flex-col gap-4 rounded-3xl border border-[#1A1A1D] bg-[#0D0D0F] p-4">
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest Type</label>
-                    <div className="flex bg-[#1A1A1D] p-1 rounded-2xl">
+                    <label className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-500">Interest Type</label>
+                    <div className="flex rounded-2xl bg-[#1A1A1D] p-1">
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, interest_mode: "fixed" })}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                        className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all ${
                           formData.interest_mode !== "percentage"
                             ? "bg-white text-black shadow-lg"
                             : "text-zinc-500 hover:text-white"
@@ -153,7 +160,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, interest_mode: "percentage" })}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                        className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all ${
                           formData.interest_mode === "percentage"
                             ? "bg-white text-black shadow-lg"
                             : "text-zinc-500 hover:text-white"
@@ -165,8 +172,8 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">
-                      {formData.interest_mode === "percentage" ? "Interest Rate (%)" : "Interest Amount (₹)"}
+                    <label className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-500">
+                      {formData.interest_mode === "percentage" ? "Interest Rate (%)" : "Interest Amount (\u20B9)"}
                     </label>
                     <input
                       required
@@ -174,17 +181,17 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                       min="0"
                       step={formData.interest_mode === "percentage" ? "0.01" : "1"}
                       placeholder="0"
-                      className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
+                      className="rounded-2xl border border-transparent bg-[#1A1A1D] px-4 py-3 font-medium text-white outline-none transition-all placeholder:text-zinc-600 focus:border-zinc-700"
                       value={formData.interest || ""}
                       onChange={(e) => setFormData({ ...formData, interest: Number(e.target.value) })}
                     />
                     <span className="px-1 text-xs text-zinc-500">
-                      {formData.interest_mode === "percentage" ? "Example: 2 means 2% interest" : "Example: 500 means ₹500 interest"}
+                      {formData.interest_mode === "percentage" ? "Example: 2 means 2% interest" : "Example: 500 means \u20B9500 interest"}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest Period</label>
+                    <label className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-500">Interest Period</label>
                     <div className="grid grid-cols-3 gap-2">
                       {INTEREST_PERIODS.map((period) => (
                         <button
@@ -207,11 +214,11 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Date</label>
+              <label className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-500">Date</label>
               <input
                 required
                 type="date"
-                className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium [color-scheme:dark]"
+                className="rounded-2xl border border-transparent bg-[#1A1A1D] px-4 py-3 font-medium text-white outline-none transition-all placeholder:text-zinc-600 focus:border-zinc-700 [color-scheme:dark]"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
@@ -220,7 +227,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
             <button
               disabled={loading}
               type="submit"
-              className="mt-2 bg-white text-black font-semibold h-14 rounded-2xl hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-2 flex h-14 items-center justify-center gap-2 rounded-2xl bg-white font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-50"
             >
               {loading ? "Adding..." : (
                 <>

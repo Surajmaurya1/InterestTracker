@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Transaction } from "@/types/transaction";
 import { format, parseISO } from "date-fns";
@@ -9,6 +9,8 @@ import { formatCurrency, formatInterestLabel } from "@/lib/interest";
 
 interface TransactionItemProps {
   transaction: Transaction;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onDelete: () => void;
   onClick: () => void;
 }
@@ -17,9 +19,14 @@ const SWIPE_ACTION_WIDTH = 104;
 const SWIPE_TRIGGER = 52;
 const VELOCITY_TRIGGER = -500;
 
-export default function TransactionItem({ transaction, onDelete, onClick }: TransactionItemProps) {
+export default function TransactionItem({
+  transaction,
+  isOpen,
+  onOpenChange,
+  onDelete,
+  onClick,
+}: TransactionItemProps) {
   const x = useMotionValue(0);
-  const [isOpen, setIsOpen] = useState(false);
   const dragMovedRef = useRef(false);
   const isLending = transaction.type !== "collection";
 
@@ -32,15 +39,14 @@ export default function TransactionItem({ transaction, onDelete, onClick }: Tran
   const glowOpacity = useTransform(revealProgress, [0, 1], [0, 1]);
   const sheenOpacity = useTransform(revealProgress, [0, 1], [1, 0.94]);
 
-  const snapTo = (target: number) => {
-    animate(x, target, {
+  useEffect(() => {
+    animate(x, isOpen ? -SWIPE_ACTION_WIDTH : 0, {
       type: "spring",
       stiffness: 440,
       damping: 36,
       mass: 0.8,
     });
-    setIsOpen(target !== 0);
-  };
+  }, [isOpen, x]);
 
   const triggerHaptic = () => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -58,7 +64,7 @@ export default function TransactionItem({ transaction, onDelete, onClick }: Tran
 
       <motion.div
         style={{ opacity: deleteOpacity }}
-        className="absolute inset-[1px] rounded-[22px] overflow-hidden"
+        className="absolute inset-[1px] overflow-hidden rounded-[22px]"
       >
         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(127,29,29,0.96),rgba(220,38,38,0.92)_48%,rgba(248,113,113,0.88))]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.24),transparent_34%)]" />
@@ -90,59 +96,63 @@ export default function TransactionItem({ transaction, onDelete, onClick }: Tran
           if (Math.abs(info.offset.x) > 6) {
             dragMovedRef.current = true;
           }
+          if (!isOpen && info.offset.x < -8) {
+            onOpenChange(true);
+          }
         }}
         onDragEnd={(_, info) => {
           const shouldOpen = info.offset.x < -SWIPE_TRIGGER || info.velocity.x < VELOCITY_TRIGGER;
-          const next = shouldOpen ? -SWIPE_ACTION_WIDTH : 0;
-          if ((shouldOpen && !isOpen) || (!shouldOpen && isOpen)) {
+          if (shouldOpen !== isOpen) {
             triggerHaptic();
           }
-          snapTo(next);
+          onOpenChange(shouldOpen);
         }}
         onTap={() => {
           if (dragMovedRef.current) return;
           if (isOpen) {
-            snapTo(0);
+            onOpenChange(false);
             return;
           }
           onClick();
         }}
         whileTap={{ scale: 0.992 }}
-        className="relative z-10 flex items-center justify-between rounded-[24px] border border-[#1A1A1D] bg-[#111113]/96 px-4 py-4 backdrop-blur-xl cursor-pointer shadow-[0_16px_36px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:bg-[#151518] active:cursor-grabbing"
+        className="relative z-10 cursor-pointer rounded-[24px] border border-[#1A1A1D] bg-[#111113]/96 px-4 py-4 shadow-[0_16px_36px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl transition-colors hover:bg-[#151518] active:cursor-grabbing"
       >
         <motion.div
           style={{ opacity: sheenOpacity }}
           className="pointer-events-none absolute inset-0 rounded-[24px] bg-[linear-gradient(135deg,rgba(255,255,255,0.045),transparent_35%,transparent_65%,rgba(255,255,255,0.025))]"
         />
 
-        <div className="relative flex items-center gap-4">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-[18px] border ${
-              isLending
-                ? "border-white/5 bg-[#1A1A1D] text-zinc-300"
-                : "border-green-500/20 bg-green-500/10 text-green-400"
-            }`}
-          >
-            {isLending ? <ArrowUpRight size={22} /> : <ArrowDownLeft size={22} />}
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div
+              className={`flex h-12 w-12 items-center justify-center rounded-[18px] border ${
+                isLending
+                  ? "border-white/5 bg-[#1A1A1D] text-zinc-300"
+                  : "border-green-500/20 bg-green-500/10 text-green-400"
+              }`}
+            >
+              {isLending ? <ArrowUpRight size={22} /> : <ArrowDownLeft size={22} />}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold tracking-wide text-white">{transaction.person_name}</span>
+              <span className="text-[11px] font-medium text-zinc-500">{format(parseISO(transaction.date), "MMM dd, yyyy")}</span>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold tracking-wide text-white">{transaction.person_name}</span>
-            <span className="text-[11px] font-medium text-zinc-500">{format(parseISO(transaction.date), "MMM dd, yyyy")}</span>
-          </div>
-        </div>
 
-        <div className="relative flex flex-col items-end gap-0.5 text-right">
-          <span className={`text-base font-semibold tracking-tight ${isLending ? "text-white" : "text-green-500"}`}>
-            {isLending ? "" : "+"}
-            {formatCurrency(Number(transaction.amount))}
-          </span>
-          {isLending ? (
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              {formatInterestLabel(transaction)}
+          <div className="relative flex flex-col items-end gap-0.5 text-right">
+            <span className={`text-base font-semibold tracking-tight ${isLending ? "text-white" : "text-green-500"}`}>
+              {isLending ? "" : "+"}
+              {formatCurrency(Number(transaction.amount))}
             </span>
-          ) : (
-            <span className="text-[10px] font-bold uppercase tracking-widest text-green-500/50">Received</span>
-          )}
+            {isLending ? (
+              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                {formatInterestLabel(transaction)}
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-green-500/50">Received</span>
+            )}
+          </div>
         </div>
       </motion.div>
     </div>

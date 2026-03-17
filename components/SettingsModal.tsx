@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Shield, Lock, Eye, EyeOff, Trash2, LogOut } from "lucide-react";
 import { supabase, getProfile, updateMpin } from "@/lib/supabase";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps) {
+  const { showToast, confirm } = useFeedback();
   const [mpin, setMpin] = useState("");
   const [isMpinSet, setIsMpinSet] = useState(false);
   const [showMpin, setShowMpin] = useState(false);
@@ -20,9 +22,7 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
     const fetchStatus = async () => {
       try {
         const profile = await getProfile();
-        if (profile?.mpin) {
-          setIsMpinSet(true);
-        }
+        setIsMpinSet(Boolean(profile?.mpin));
       } catch (err) {
         console.error("Error fetching MPIN status:", err);
       }
@@ -32,7 +32,7 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
 
   const handleSetMpin = async () => {
     if (mpin.length !== 4) {
-      alert("MPIN must be 4 digits");
+      showToast({ tone: "error", title: "MPIN must be 4 digits" });
       return;
     }
     setLoading(true);
@@ -40,29 +40,46 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
       await updateMpin(mpin);
       setIsMpinSet(true);
       setMpin("");
-      alert("Cloud MPIN set successfully!");
+      showToast({ tone: "success", title: "MPIN updated", message: "Your security lock is now active." });
     } catch (err) {
-      alert("Failed to sync MPIN to cloud.");
+      console.error("Error setting MPIN:", err);
+      showToast({ tone: "error", title: "Could not update MPIN", message: "Please try again." });
     } finally {
       setLoading(false);
     }
   };
 
   const handleRemoveMpin = async () => {
-    if (confirm("Are you sure you want to remove the security lock?")) {
-      setLoading(true);
-      try {
-        await updateMpin(null);
-        setIsMpinSet(false);
-      } catch (err) {
-        alert("Failed to remove MPIN.");
-      } finally {
-        setLoading(false);
-      }
+    const approved = await confirm({
+      title: "Remove security lock?",
+      message: "This will disable MPIN protection for the app.",
+      confirmLabel: "Remove",
+      tone: "danger",
+    });
+    if (!approved) return;
+
+    setLoading(true);
+    try {
+      await updateMpin(null);
+      setIsMpinSet(false);
+      showToast({ tone: "success", title: "Security lock removed" });
+    } catch (err) {
+      console.error("Error removing MPIN:", err);
+      showToast({ tone: "error", title: "Could not remove MPIN", message: "Please try again." });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignOut = async () => {
+    const approved = await confirm({
+      title: "Sign out now?",
+      message: "You can sign back in anytime with your account.",
+      confirmLabel: "Sign Out",
+      tone: "danger",
+    });
+    if (!approved) return;
+
     await supabase.auth.signOut();
     setIsOpen(false);
   };
@@ -70,16 +87,16 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
   return (
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 sm:p-8 z-50 animate-in zoom-in-95 duration-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-8">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-[#1A1A1D] bg-[#111113] p-6 shadow-2xl animate-in zoom-in-95 duration-200 sm:p-8">
+          <div className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/5 rounded-xl">
+              <div className="rounded-xl bg-white/5 p-2">
                 <Shield size={22} className="text-white" />
               </div>
               <Dialog.Title className="text-xl font-semibold">Settings</Dialog.Title>
             </div>
-            <Dialog.Close className="p-2 text-zinc-400 hover:text-white transition-colors">
+            <Dialog.Close className="p-2 text-zinc-400 transition-colors hover:text-white">
               <X size={20} />
             </Dialog.Close>
           </div>
@@ -89,12 +106,13 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-medium text-white">Security Lock (MPIN)</h3>
-                  <p className="text-xs text-zinc-500 mt-1">Require a 4-digit code to open the app.</p>
+                  <p className="mt-1 text-xs text-zinc-500">Require a 4-digit code to open the app.</p>
                 </div>
                 {isMpinSet && (
-                  <button 
+                  <button
+                    type="button"
                     onClick={handleRemoveMpin}
-                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                    className="rounded-xl p-2 text-red-500 transition-colors hover:bg-red-500/10"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -108,50 +126,54 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
                       type={showMpin ? "text" : "password"}
                       maxLength={4}
                       placeholder="Set 4-digit MPIN"
-                      className="w-full bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
+                      className="w-full rounded-2xl border border-transparent bg-[#1A1A1D] px-4 py-3 font-medium text-white outline-none transition-all placeholder:text-zinc-600 focus:border-zinc-700"
                       value={mpin}
                       onChange={(e) => setMpin(e.target.value.replace(/\D/g, ""))}
                     />
-                    <button 
+                    <button
+                      type="button"
                       onClick={() => setShowMpin(!showMpin)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500"
                     >
                       {showMpin ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                  <button 
+                  <button
+                    type="button"
+                    disabled={loading}
                     onClick={handleSetMpin}
-                    className="bg-white text-black px-6 rounded-2xl font-semibold hover:bg-zinc-200 transition-colors"
+                    className="rounded-2xl bg-white px-6 font-semibold text-black transition-colors hover:bg-zinc-200 disabled:opacity-50"
                   >
                     Set
                   </button>
                 </div>
               ) : (
-                <div className="bg-green-500/5 border border-green-500/10 rounded-2xl p-4 flex items-center gap-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-green-500/10 bg-green-500/5 p-4">
                   <Lock size={18} className="text-green-500" />
-                  <span className="text-sm text-green-500/90 font-medium">MPIN Security is Active</span>
+                  <span className="text-sm font-medium text-green-500/90">MPIN Security is Active</span>
                 </div>
               )}
             </section>
 
-            <section className="pt-4 border-t border-[#1A1A1D] space-y-6">
+            <section className="space-y-6 border-t border-[#1A1A1D] pt-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-medium text-white">App Version</h3>
-                  <p className="text-xs text-zinc-500 mt-1">Latest production build</p>
+                  <p className="mt-1 text-xs text-zinc-500">Latest production build</p>
                 </div>
-                <span className="text-xs font-mono text-zinc-600">v1.2.0</span>
+                <span className="font-mono text-xs text-zinc-600">v1.2.0</span>
               </div>
 
-              <button 
+              <button
+                type="button"
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-between p-4 bg-red-500/5 border border-red-500/10 rounded-2xl group hover:bg-red-500/10 transition-all"
+                className="group flex w-full items-center justify-between rounded-2xl border border-red-500/10 bg-red-500/5 p-4 transition-all hover:bg-red-500/10"
               >
                 <div className="flex items-center gap-3">
                   <LogOut size={18} className="text-red-500" />
                   <span className="text-sm font-semibold text-red-500">Sign Out</span>
                 </div>
-                <span className="text-[10px] text-red-500/40 uppercase font-bold tracking-widest hidden group-hover:block transition-all">End Session</span>
+                <span className="hidden text-[10px] font-bold uppercase tracking-widest text-red-500/40 transition-all group-hover:block">End Session</span>
               </button>
             </section>
           </div>

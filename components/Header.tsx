@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, Settings, X } from "lucide-react";
+import { Search, Settings, X } from "lucide-react";
 import { useState } from "react";
 
 interface HeaderProps {
@@ -13,50 +13,59 @@ export default function Header({ onSearch, onSettings }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    onSearch(e.target.value);
+    const value = e.target.value;
+    setSearchQuery(value);
+    onSearch(value);
   };
 
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 relative h-14 sm:h-16">
+    <header className="relative flex h-14 items-center justify-between px-4 py-3 sm:h-16 sm:px-6 sm:py-4">
       {isSearching ? (
-        <div className="absolute inset-0 px-4 sm:px-6 flex items-center bg-background z-20 animate-in slide-in-from-top duration-200">
-          <div className="flex-1 flex items-center gap-3 bg-[#111113] border border-[#1A1A1D] rounded-2xl px-4 py-2">
+        <div className="absolute inset-0 z-20 flex items-center bg-background px-4 sm:px-6 animate-in slide-in-from-top duration-200">
+          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[#1A1A1D] bg-[#111113] px-4 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
             <Search size={18} className="text-zinc-500" />
-            <input 
+            <input
               autoFocus
-              type="text" 
-              placeholder="Search person..." 
-              className="bg-transparent border-none outline-none flex-1 text-sm text-white placeholder:text-zinc-600"
+              type="text"
+              placeholder="Search person..."
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 outline-none"
               value={searchQuery}
               onChange={handleSearchChange}
             />
-            <button onClick={() => { setIsSearching(false); onSearch(""); setSearchQuery(""); }}>
-              <X size={18} className="text-zinc-500 hover:text-white" />
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearching(false);
+                onSearch("");
+                setSearchQuery("");
+              }}
+              className="rounded-full p-1 text-zinc-500 transition-colors hover:text-white"
+            >
+              <X size={18} />
             </button>
           </div>
         </div>
       ) : (
         <>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">
+            <h1 className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-xl font-bold tracking-tight text-transparent">
               Welcome Back
             </h1>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-600">Track lending with clarity</p>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <button 
+            <button
+              type="button"
               onClick={() => setIsSearching(true)}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-[#111113] rounded-xl transition-all"
+              className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-[#111113] hover:text-white"
             >
               <Search size={20} />
             </button>
-            <button className="p-2 text-zinc-400 hover:text-white hover:bg-[#111113] rounded-xl transition-all">
-              <Filter size={20} />
-            </button>
-            <button 
+            <button
+              type="button"
               onClick={onSettings}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-[#111113] rounded-xl transition-all"
+              className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-[#111113] hover:text-white"
             >
               <Settings size={20} />
             </button>

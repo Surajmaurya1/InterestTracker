@@ -37,7 +37,7 @@ export function getMonthlyInterestProjection(
 }
 
 export function formatCurrency(value: number): string {
-  return `₹${Number(value).toLocaleString()}`;
+  return `\u20B9${Number(value).toLocaleString()}`;
 }
 
 export function formatInterestLabel(
