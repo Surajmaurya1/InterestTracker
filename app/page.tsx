@@ -10,10 +10,14 @@ import AddTransactionModal from "@/components/AddTransactionModal";
 import SettingsModal from "@/components/SettingsModal";
 import SecurityLock from "@/components/SecurityLock";
 import TransactionDetailModal from "@/components/TransactionDetailModal";
-import { fetchTransactions, deleteTransaction } from "@/lib/supabase";
+import Auth from "@/components/Auth";
+import { supabase, fetchTransactions, deleteTransaction } from "@/lib/supabase";
 import { Transaction } from "@/types/transaction";
+import { Session } from "@supabase/supabase-js";
 
 export default function Home() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +25,21 @@ export default function Home() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const loadData = async () => {
+    if (!session) return;
     try {
       const data = await fetchTransactions();
       setTransactions(data);
@@ -44,8 +62,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (session) {
+      loadData();
+    }
+  }, [session]);
 
   const filteredTransactions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -76,6 +96,18 @@ export default function Home() {
       avgInterest: avgInterest.toFixed(1)
     };
   }, [transactions]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <SecurityLock>
@@ -142,7 +174,7 @@ export default function Home() {
           onClose={() => setSelectedTransaction(null)}
         />
 
-        {loading && (
+        {(loading && session) && (
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-[100]">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />

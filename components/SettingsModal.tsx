@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Shield, Lock, Eye, EyeOff, Trash2 } from "lucide-react";
+import { X, Shield, Lock, Eye, EyeOff, Trash2, LogOut } from "lucide-react";
+import { supabase, getProfile, updateMpin } from "@/lib/supabase";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,30 +14,57 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
   const [mpin, setMpin] = useState("");
   const [isMpinSet, setIsMpinSet] = useState(false);
   const [showMpin, setShowMpin] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const savedMpin = localStorage.getItem("app_mpin");
-    if (savedMpin) {
-      setIsMpinSet(true);
-    }
-  }, []);
+    const fetchStatus = async () => {
+      try {
+        const profile = await getProfile();
+        if (profile?.mpin) {
+          setIsMpinSet(true);
+        }
+      } catch (err) {
+        console.error("Error fetching MPIN status:", err);
+      }
+    };
+    if (isOpen) fetchStatus();
+  }, [isOpen]);
 
-  const handleSetMpin = () => {
+  const handleSetMpin = async () => {
     if (mpin.length !== 4) {
       alert("MPIN must be 4 digits");
       return;
     }
-    localStorage.setItem("app_mpin", mpin);
-    setIsMpinSet(true);
-    setMpin("");
-    alert("MPIN set successfully");
+    setLoading(true);
+    try {
+      await updateMpin(mpin);
+      setIsMpinSet(true);
+      setMpin("");
+      alert("Cloud MPIN set successfully!");
+    } catch (err) {
+      alert("Failed to sync MPIN to cloud.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRemoveMpin = () => {
+  const handleRemoveMpin = async () => {
     if (confirm("Are you sure you want to remove the security lock?")) {
-      localStorage.removeItem("app_mpin");
-      setIsMpinSet(false);
+      setLoading(true);
+      try {
+        await updateMpin(null);
+        setIsMpinSet(false);
+      } catch (err) {
+        alert("Failed to remove MPIN.");
+      } finally {
+        setLoading(false);
+      }
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setIsOpen(false);
   };
 
   return (
@@ -106,7 +134,7 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
               )}
             </section>
 
-            <section className="pt-4 border-t border-[#1A1A1D]">
+            <section className="pt-4 border-t border-[#1A1A1D] space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-medium text-white">App Version</h3>
@@ -114,6 +142,17 @@ export default function SettingsModal({ isOpen, setIsOpen }: SettingsModalProps)
                 </div>
                 <span className="text-xs font-mono text-zinc-600">v1.2.0</span>
               </div>
+
+              <button 
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-between p-4 bg-red-500/5 border border-red-500/10 rounded-2xl group hover:bg-red-500/10 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut size={18} className="text-red-500" />
+                  <span className="text-sm font-semibold text-red-500">Sign Out</span>
+                </div>
+                <span className="text-[10px] text-red-500/40 uppercase font-bold tracking-widest hidden group-hover:block transition-all">End Session</span>
+              </button>
             </section>
           </div>
         </Dialog.Content>

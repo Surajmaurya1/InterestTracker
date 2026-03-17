@@ -1,21 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lock, Delete, RefreshCcw } from "lucide-react";
+import { Lock, Delete, RefreshCcw, Loader2, KeyRound, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase, getProfile, updateMpin } from "@/lib/supabase";
 
 export default function SecurityLock({ children }: { children: React.ReactNode }) {
   const [isLocked, setIsLocked] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [mpin, setMpin] = useState<string | null>(null);
+  
+  // Reset Flow States
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedPin = localStorage.getItem("app_mpin");
-    if (savedPin) {
-      setMpin(savedPin);
-      setIsLocked(true);
-    }
+    const checkMpin = async () => {
+      try {
+        const profile = await getProfile();
+        if (profile?.mpin) {
+          setMpin(profile.mpin);
+          setIsLocked(true);
+        }
+      } catch (err) {
+        console.error("Error checking MPIN:", err);
+      }
+    };
+    checkMpin();
   }, []);
 
   const handleKeyPress = (num: string) => {
@@ -36,10 +50,33 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
     }
   };
 
-  const handleForgot = () => {
-    if (confirm("Reset MPIN? This will clear your security lock but keep your data.")) {
-      localStorage.removeItem("app_mpin");
+  const handleMpinReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setResetError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("User email not found");
+
+      // Verify identity by signing in again
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: resetPassword,
+      });
+
+      if (signInError) throw new Error("Invalid password. Reset failed.");
+
+      // Clear the MPIN in Supabase
+      await updateMpin(null);
+      setMpin(null);
       setIsLocked(false);
+      setShowResetModal(false);
+      alert("MPIN has been removed. You can set a new one in Settings.");
+    } catch (err: any) {
+      setResetError(err.message);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -100,13 +137,74 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
         </div>
 
         <button 
-          onClick={handleForgot}
+          onClick={() => setShowResetModal(true)}
           className="flex items-center gap-2 text-zinc-500 text-sm hover:text-white transition-colors"
         >
           <RefreshCcw size={14} />
           <span>Forgot MPIN?</span>
         </button>
       </motion.div>
+
+      {/* Reset Modal Overlay */}
+      <AnimatePresence>
+        {showResetModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center px-6 p-4">
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className="bg-[#111113] border border-[#1A1A1D] w-full max-w-sm rounded-[40px] p-8 relative shadow-2xl"
+            >
+              <button 
+                onClick={() => setShowResetModal(false)}
+                className="absolute right-6 top-6 p-2 text-zinc-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="flex flex-col gap-6">
+                <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                  <KeyRound size={24} className="text-red-500" />
+                </div>
+                
+                <div className="text-center space-y-2">
+                  <h3 className="text-lg font-bold text-white">Reset Security Lock</h3>
+                  <p className="text-sm text-zinc-500 leading-relaxed px-4">
+                    For your security, please verify your identity by entering your account password.
+                  </p>
+                </div>
+
+                <form onSubmit={handleMpinReset} className="flex flex-col gap-4">
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-white transition-colors" size={18} />
+                    <input 
+                      required
+                      type="password" 
+                      placeholder="Enter Password"
+                      className="w-full bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-zinc-600 transition-all font-medium"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                    />
+                  </div>
+
+                  {resetError && (
+                    <p className="text-red-500 text-xs font-bold bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-center">
+                      {resetError}
+                    </p>
+                  )}
+
+                  <button 
+                    disabled={resetLoading}
+                    className="w-full bg-white text-black font-bold h-14 rounded-2xl hover:bg-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-2"
+                  >
+                    {resetLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify Identity"}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
