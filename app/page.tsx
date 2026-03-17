@@ -87,15 +87,16 @@ export default function Home() {
 
     const totalGiven = lendingTx.reduce((acc, curr) => acc + Number(curr.amount), 0);
     const totalCollected = collectionTx.reduce((acc, curr) => acc + Number(curr.amount), 0);
-    const avgMonthlyInterest = lendingTx.length > 0
-      ? lendingTx.reduce((acc, curr) => acc + getMonthlyInterestProjection(curr), 0) / lendingTx.length
-      : 0;
+    const totalMonthlyInterest = lendingTx.reduce(
+      (acc, curr) => acc + getMonthlyInterestProjection(curr),
+      0,
+    );
 
     return {
       totalGiven,
       totalCollected,
       count: transactions.length,
-      avgMonthlyInterest: formatCurrency(Number(avgMonthlyInterest.toFixed(2))),
+      totalMonthlyInterest: formatCurrency(Number(totalMonthlyInterest.toFixed(2))),
     };
   }, [transactions]);
 
@@ -140,8 +141,8 @@ export default function Home() {
               <span className="text-xl sm:text-2xl font-semibold">{stats.count}</span>
             </div>
             <div className="bg-[#111113] border border-[#1A1A1D] rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col gap-1">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Avg. Monthly Interest</span>
-              <span className="text-xl sm:text-2xl font-semibold">{stats.avgMonthlyInterest}</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Total Monthly Interest</span>
+              <span className="text-xl sm:text-2xl font-semibold">{stats.totalMonthlyInterest}</span>
             </div>
           </section>
 
