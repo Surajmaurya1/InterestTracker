@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Lending Tracker | Premium Fintech Dashboard",
+  title: "Interest Tracker",
   description: "Track your money lending with style and precision.",
 };
 

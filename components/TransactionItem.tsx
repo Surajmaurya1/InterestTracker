@@ -42,9 +42,9 @@ export default function TransactionItem({ transaction, onDelete }: TransactionIt
             <span className="text-xs text-zinc-500">{format(parseISO(transaction.date), "MMM dd, yyyy")}</span>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="font-semibold text-white">₹{Number(transaction.amount).toLocaleString()}</span>
-          <span className="text-[10px] text-zinc-500">₹{transaction.interest} / day</span>
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-base font-semibold text-white tracking-tight">₹{Number(transaction.amount).toLocaleString()}</span>
+          <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">₹{transaction.interest} / day</span>
         </div>
       </motion.div>
     </div>
