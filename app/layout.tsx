@@ -8,11 +8,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Interest Tracker | Smart Lending Manager",
-  description: "Track your money lending, interest calculations, and collections with a premium fintech experience. Secure, fast, and beautiful.",
+  title: "Interest Tracker",
+  description: "Track loans & interest with a modern fintech app",
   keywords: ["interest tracker", "lending", "money manager", "fintech", "loan tracker"],
   authors: [{ name: "Interest Tracker" }],
   robots: "index, follow",
+  openGraph: {
+    images: ["/og-image.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-image.png"],
+  },
 };
 
 export const viewport: Viewport = {
