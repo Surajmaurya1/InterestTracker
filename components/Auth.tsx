@@ -15,31 +15,43 @@ export default function Auth() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setError("Please enter your email");
+      return;
+    }
+
+    if (isSignUp && password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({ email: trimmedEmail, password });
         if (error) throw error;
         alert("Check your email for the confirmation link!");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
         if (error) throw error;
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-6">
+    <div className="min-h-screen flex items-center justify-center bg-black p-4 sm:p-6">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm bg-[#111113] border border-[#1A1A1D] rounded-[40px] p-10 flex flex-col gap-8 shadow-2xl"
+        className="w-full max-w-sm bg-[#111113] border border-[#1A1A1D] rounded-[32px] sm:rounded-[40px] p-8 sm:p-10 flex flex-col gap-8 shadow-2xl"
       >
         <div className="flex flex-col gap-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white">
@@ -58,6 +70,7 @@ export default function Auth() {
                 required
                 type="email" 
                 placeholder="Email address"
+                autoComplete="email"
                 className="w-full bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-zinc-600 transition-all font-medium"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -72,6 +85,8 @@ export default function Auth() {
                 required
                 type={showPassword ? "text" : "password"} 
                 placeholder="Password"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                minLength={6}
                 className="w-full bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl pl-12 pr-12 py-4 text-white placeholder:text-zinc-600 transition-all font-medium"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -24,9 +24,16 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Client-side validation
+    const name = formData.person_name.trim();
+    if (!name) { alert("Please enter a person name"); return; }
+    if (formData.amount <= 0) { alert("Amount must be greater than 0"); return; }
+    if (formData.type === 'lending' && formData.interest < 0) { alert("Interest cannot be negative"); return; }
+
     setLoading(true);
     try {
-      await addTransaction(formData);
+      await addTransaction({ ...formData, person_name: name });
       setIsOpen(false);
       onSuccess();
       setFormData({
@@ -38,7 +45,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
       });
     } catch (error) {
       console.error("Error adding transaction:", error);
-      alert("Failed to add transaction. Check console for details.");
+      alert(error instanceof Error ? error.message : "Failed to add transaction");
     } finally {
       setLoading(false);
     }
@@ -88,6 +95,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
               <input
                 required
                 type="text"
+                maxLength={100}
                 placeholder={formData.type === 'lending' ? "Who are you lending to?" : "From whom did you receive?"}
                 className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
                 value={formData.person_name}

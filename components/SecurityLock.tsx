@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Lock, Delete, RefreshCcw, Loader2, KeyRound, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase, getProfile, updateMpin } from "@/lib/supabase";
+
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 30000; // 30 seconds
 
 export default function SecurityLock({ children }: { children: React.ReactNode }) {
   const [isLocked, setIsLocked] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [mpin, setMpin] = useState<string | null>(null);
+  
+  // Rate limiting
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [lockCountdown, setLockCountdown] = useState(0);
   
   // Reset Flow States
   const [showResetModal, setShowResetModal] = useState(false);
@@ -25,30 +33,55 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
           setMpin(profile.mpin);
           setIsLocked(true);
         }
-      } catch (err) {
-        console.error("Error checking MPIN:", err);
+      } catch {
+        // Profile check failed, no lock needed
       }
     };
     checkMpin();
   }, []);
 
-  const handleKeyPress = (num: string) => {
-    if (pin.length < 4) {
-      const newPin = pin + num;
-      setPin(newPin);
-      if (newPin.length === 4) {
-        if (newPin === mpin) {
-          setIsLocked(false);
-        } else {
-          setError(true);
-          setTimeout(() => {
-            setError(false);
-            setPin("");
-          }, 600);
+  // Lockout countdown timer
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, lockedUntil - Date.now());
+      setLockCountdown(Math.ceil(remaining / 1000));
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setAttempts(0);
+        setLockCountdown(0);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
+
+  const isLockedOut = lockedUntil !== null && Date.now() < lockedUntil;
+
+  const handleKeyPress = useCallback((num: string) => {
+    if (isLockedOut || pin.length >= 4) return;
+    
+    const newPin = pin + num;
+    setPin(newPin);
+    if (newPin.length === 4) {
+      if (newPin === mpin) {
+        setIsLocked(false);
+        setAttempts(0);
+      } else {
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        setError(true);
+        
+        if (newAttempts >= MAX_ATTEMPTS) {
+          setLockedUntil(Date.now() + LOCKOUT_DURATION);
         }
+        
+        setTimeout(() => {
+          setError(false);
+          setPin("");
+        }, 600);
       }
     }
-  };
+  }, [pin, mpin, attempts, isLockedOut]);
 
   const handleMpinReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,22 +92,22 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error("User email not found");
 
-      // Verify identity by signing in again
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: resetPassword,
       });
 
-      if (signInError) throw new Error("Invalid password. Reset failed.");
+      if (signInError) throw new Error("Invalid password. Verification failed.");
 
-      // Clear the MPIN in Supabase
       await updateMpin(null);
       setMpin(null);
       setIsLocked(false);
       setShowResetModal(false);
-      alert("MPIN has been removed. You can set a new one in Settings.");
-    } catch (err: any) {
-      setResetError(err.message);
+      setResetPassword("");
+      setAttempts(0);
+      setLockedUntil(null);
+    } catch (err: unknown) {
+      setResetError(err instanceof Error ? err.message : "Reset failed");
     } finally {
       setResetLoading(false);
     }
@@ -94,7 +127,18 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
         </div>
         
         <h2 className="text-xl font-bold mb-2">Enter MPIN</h2>
-        <p className="text-zinc-500 text-sm mb-12">Security lock active</p>
+        
+        {isLockedOut ? (
+          <p className="text-red-500 text-sm mb-12 font-semibold">
+            Too many attempts. Try again in {lockCountdown}s
+          </p>
+        ) : attempts > 0 ? (
+          <p className="text-zinc-500 text-sm mb-12">
+            {MAX_ATTEMPTS - attempts} attempts remaining
+          </p>
+        ) : (
+          <p className="text-zinc-500 text-sm mb-12">Security lock active</p>
+        )}
 
         {/* PIN Indicators */}
         <div className="flex gap-4 mb-16">
@@ -111,33 +155,35 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
         </div>
 
         {/* Numpad */}
-        <div className="grid grid-cols-3 gap-6 w-full mb-12">
+        <div className="grid grid-cols-3 gap-4 sm:gap-6 w-full mb-12">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
             <button
               key={num}
+              disabled={isLockedOut}
               onClick={() => handleKeyPress(num)}
-              className="w-16 h-16 rounded-2xl bg-[#111113] border border-[#1A1A1D] text-xl font-semibold flex items-center justify-center hover:bg-[#1A1A1D] active:scale-95 transition-all mx-auto"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#111113] border border-[#1A1A1D] text-xl font-semibold flex items-center justify-center hover:bg-[#1A1A1D] active:scale-95 transition-all mx-auto disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {num}
             </button>
           ))}
           <div />
           <button
+            disabled={isLockedOut}
             onClick={() => handleKeyPress("0")}
-            className="w-16 h-16 rounded-2xl bg-[#111113] border border-[#1A1A1D] text-xl font-semibold flex items-center justify-center hover:bg-[#1A1A1D] active:scale-95 transition-all mx-auto"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#111113] border border-[#1A1A1D] text-xl font-semibold flex items-center justify-center hover:bg-[#1A1A1D] active:scale-95 transition-all mx-auto disabled:opacity-30 disabled:cursor-not-allowed"
           >
             0
           </button>
           <button
             onClick={() => setPin(pin.slice(0, -1))}
-            className="w-16 h-16 text-zinc-500 flex items-center justify-center hover:text-white transition-colors mx-auto"
+            className="w-14 h-14 sm:w-16 sm:h-16 text-zinc-500 flex items-center justify-center hover:text-white transition-colors mx-auto"
           >
             <Delete size={24} />
           </button>
         </div>
 
         <button 
-          onClick={() => setShowResetModal(true)}
+          onClick={() => { setShowResetModal(true); setResetPassword(""); setResetError(null); }}
           className="flex items-center gap-2 text-zinc-500 text-sm hover:text-white transition-colors"
         >
           <RefreshCcw size={14} />
@@ -148,16 +194,16 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
       {/* Reset Modal Overlay */}
       <AnimatePresence>
         {showResetModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center px-6 p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1100] flex items-center justify-center px-4 sm:px-6 p-4">
             <motion.div 
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 50, opacity: 0 }}
-              className="bg-[#111113] border border-[#1A1A1D] w-full max-w-sm rounded-[40px] p-8 relative shadow-2xl"
+              className="bg-[#111113] border border-[#1A1A1D] w-full max-w-sm rounded-[32px] sm:rounded-[40px] p-6 sm:p-8 relative shadow-2xl"
             >
               <button 
                 onClick={() => setShowResetModal(false)}
-                className="absolute right-6 top-6 p-2 text-zinc-500 hover:text-white transition-colors"
+                className="absolute right-5 top-5 sm:right-6 sm:top-6 p-2 text-zinc-500 hover:text-white transition-colors"
               >
                 <X size={20} />
               </button>
@@ -169,8 +215,8 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
                 
                 <div className="text-center space-y-2">
                   <h3 className="text-lg font-bold text-white">Reset Security Lock</h3>
-                  <p className="text-sm text-zinc-500 leading-relaxed px-4">
-                    For your security, please verify your identity by entering your account password.
+                  <p className="text-sm text-zinc-500 leading-relaxed px-2 sm:px-4">
+                    Verify your identity by entering your account password.
                   </p>
                 </div>
 
@@ -181,6 +227,7 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
                       required
                       type="password" 
                       placeholder="Enter Password"
+                      autoComplete="current-password"
                       className="w-full bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl pl-12 pr-4 py-4 text-white placeholder:text-zinc-600 transition-all font-medium"
                       value={resetPassword}
                       onChange={(e) => setResetPassword(e.target.value)}
@@ -195,7 +242,7 @@ export default function SecurityLock({ children }: { children: React.ReactNode }
 
                   <button 
                     disabled={resetLoading}
-                    className="w-full bg-white text-black font-bold h-14 rounded-2xl hover:bg-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-2"
+                    className="w-full bg-white text-black font-bold h-14 rounded-2xl hover:bg-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
                   >
                     {resetLoading ? <Loader2 className="animate-spin" size={20} /> : "Verify Identity"}
                   </button>

@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, lazy, Suspense } from "react";
 import Header from "@/components/Header";
 import StatsCard from "@/components/StatsCard";
 import ChartCard from "@/components/ChartCard";
 import TransactionList from "@/components/TransactionList";
 import FloatingButton from "@/components/FloatingButton";
-import AddTransactionModal from "@/components/AddTransactionModal";
-import SettingsModal from "@/components/SettingsModal";
 import SecurityLock from "@/components/SecurityLock";
-import TransactionDetailModal from "@/components/TransactionDetailModal";
 import Auth from "@/components/Auth";
 import { supabase, fetchTransactions, deleteTransaction } from "@/lib/supabase";
 import { Transaction } from "@/types/transaction";
 import { Session } from "@supabase/supabase-js";
+
+// Lazy load modals — they're not needed on first paint
+const AddTransactionModal = lazy(() => import("@/components/AddTransactionModal"));
+const SettingsModal = lazy(() => import("@/components/SettingsModal"));
+const TransactionDetailModal = lazy(() => import("@/components/TransactionDetailModal"));
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -38,7 +40,7 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!session) return;
     try {
       const data = await fetchTransactions();
@@ -48,24 +50,28 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
+    if (!confirm("Delete this transaction? This action cannot be undone.")) return;
+    
+    // Optimistic update
+    const prev = transactions;
+    setTransactions(t => t.filter(item => item.id !== id));
+    
     try {
-      setTransactions(transactions.filter(t => t.id !== id));
       await deleteTransaction(id);
     } catch (error) {
       console.error("Error deleting transaction:", error);
-      alert("Failed to delete transaction");
-      loadData();
+      setTransactions(prev); // Rollback
     }
-  };
+  }, [transactions]);
 
   useEffect(() => {
     if (session) {
       loadData();
     }
-  }, [session]);
+  }, [session, loadData]);
 
   const filteredTransactions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -76,17 +82,13 @@ export default function Home() {
   }, [transactions, searchQuery]);
 
   const stats = useMemo(() => {
-    const totalGiven = transactions
-      .filter(t => t.type !== 'collection')
-      .reduce((acc, curr) => acc + Number(curr.amount), 0);
-    
-    const totalCollected = transactions
-      .filter(t => t.type === 'collection')
-      .reduce((acc, curr) => acc + Number(curr.amount), 0);
+    const lendingTx = transactions.filter(t => t.type !== 'collection');
+    const collectionTx = transactions.filter(t => t.type === 'collection');
 
-    const lendingTransactions = transactions.filter(t => t.type !== 'collection');
-    const avgInterest = lendingTransactions.length > 0 
-      ? lendingTransactions.reduce((acc, curr) => acc + Number(curr.interest), 0) / lendingTransactions.length 
+    const totalGiven = lendingTx.reduce((acc, curr) => acc + Number(curr.amount), 0);
+    const totalCollected = collectionTx.reduce((acc, curr) => acc + Number(curr.amount), 0);
+    const avgInterest = lendingTx.length > 0 
+      ? lendingTx.reduce((acc, curr) => acc + Number(curr.interest), 0) / lendingTx.length 
       : 0;
     
     return {
@@ -157,23 +159,31 @@ export default function Home() {
 
         <FloatingButton onClick={() => setIsModalOpen(true)} />
 
-        
-        <AddTransactionModal 
-          isOpen={isModalOpen} 
-          setIsOpen={setIsModalOpen} 
-          onSuccess={loadData} 
-        />
+        {/* Lazy-loaded modals */}
+        <Suspense fallback={null}>
+          {isModalOpen && (
+            <AddTransactionModal 
+              isOpen={isModalOpen} 
+              setIsOpen={setIsModalOpen} 
+              onSuccess={loadData} 
+            />
+          )}
 
-        <SettingsModal 
-          isOpen={isSettingsOpen} 
-          setIsOpen={setIsSettingsOpen} 
-        />
+          {isSettingsOpen && (
+            <SettingsModal 
+              isOpen={isSettingsOpen} 
+              setIsOpen={setIsSettingsOpen} 
+            />
+          )}
 
-        <TransactionDetailModal 
-          transaction={selectedTransaction}
-          isOpen={!!selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
-        />
+          {selectedTransaction && (
+            <TransactionDetailModal 
+              transaction={selectedTransaction}
+              isOpen={!!selectedTransaction}
+              onClose={() => setSelectedTransaction(null)}
+            />
+          )}
+        </Suspense>
 
         {(loading && session) && (
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-[100]">
