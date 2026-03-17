@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Transaction, NewTransaction } from '@/types/transaction';
+import { getInterestMode, getInterestPeriod } from '@/lib/interest';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -58,12 +59,16 @@ export async function fetchTransactions(): Promise<Transaction[]> {
   const user = await getAuthenticatedUser();
   const { data, error } = await supabase
     .from('transactions')
-    .select('id, user_id, person_name, amount, interest, date, type, created_at')
+    .select('id, user_id, person_name, amount, interest, interest_mode, interest_period, date, type, created_at')
     .eq('user_id', user.id)
     .order('date', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as Transaction[];
+  return (data ?? []).map((transaction) => ({
+    ...transaction,
+    interest_mode: getInterestMode(transaction as Transaction),
+    interest_period: getInterestPeriod(transaction as Transaction),
+  })) as Transaction[];
 }
 
 export async function addTransaction(transaction: NewTransaction): Promise<Transaction> {
@@ -76,6 +81,9 @@ export async function addTransaction(transaction: NewTransaction): Promise<Trans
   if (transaction.type === 'lending' && (transaction.interest < 0 || transaction.interest > 99999999)) {
     throw new Error('Invalid interest');
   }
+  if (transaction.type === 'lending' && getInterestMode(transaction) === 'percentage' && transaction.interest > 100) {
+    throw new Error('Invalid interest percentage');
+  }
 
   const { data, error } = await supabase
     .from('transactions')
@@ -83,6 +91,8 @@ export async function addTransaction(transaction: NewTransaction): Promise<Trans
       person_name: name,
       amount: transaction.amount,
       interest: transaction.type === 'collection' ? 0 : transaction.interest,
+      interest_mode: transaction.type === 'collection' ? 'fixed' : getInterestMode(transaction),
+      interest_period: transaction.type === 'collection' ? 'day' : getInterestPeriod(transaction),
       date: transaction.date,
       type: transaction.type,
       user_id: user.id,
@@ -91,7 +101,11 @@ export async function addTransaction(transaction: NewTransaction): Promise<Trans
     .single();
 
   if (error) throw error;
-  return data as Transaction;
+  return {
+    ...(data as Transaction),
+    interest_mode: getInterestMode(data as Transaction),
+    interest_period: getInterestPeriod(data as Transaction),
+  };
 }
 
 export async function deleteTransaction(id: string): Promise<void> {

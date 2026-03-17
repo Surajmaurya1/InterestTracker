@@ -1,9 +1,10 @@
 "use client";
 
-import { User, Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Transaction } from "@/types/transaction";
 import { format, parseISO } from "date-fns";
 import { motion, useMotionValue, useTransform } from "framer-motion";
+import { formatCurrency, formatInterestLabel } from "@/lib/interest";
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -16,12 +17,11 @@ export default function TransactionItem({ transaction, onDelete, onClick }: Tran
   const opacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0]);
   const scale = useTransform(x, [-100, -50, 0], [1, 0.8, 0.5]);
 
-  const isLending = transaction.type !== 'collection';
+  const isLending = transaction.type !== "collection";
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      {/* Delete Action Background - strictly contained */}
-      <div 
+      <div
         className="absolute inset-[1px] flex items-center justify-end px-6 bg-red-600/90 cursor-pointer rounded-2xl"
         onClick={onDelete}
       >
@@ -30,7 +30,6 @@ export default function TransactionItem({ transaction, onDelete, onClick }: Tran
         </motion.div>
       </div>
 
-      {/* Foreground Swipeable Content */}
       <motion.div
         style={{ x }}
         drag="x"
@@ -52,10 +51,10 @@ export default function TransactionItem({ transaction, onDelete, onClick }: Tran
         </div>
         <div className="flex flex-col items-end gap-0.5">
           <span className={`text-base font-semibold tracking-tight ${isLending ? "text-white" : "text-green-500"}`}>
-            {isLending ? "" : "+"}₹{Number(transaction.amount).toLocaleString()}
+            {isLending ? "" : "+"}{formatCurrency(Number(transaction.amount))}
           </span>
           {isLending && (
-            <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">₹{transaction.interest} / day</span>
+            <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{formatInterestLabel(transaction)}</span>
           )}
           {!isLending && (
             <span className="text-[10px] font-bold text-green-500/50 uppercase tracking-widest">Received</span>

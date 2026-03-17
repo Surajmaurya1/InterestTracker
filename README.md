@@ -87,10 +87,16 @@ create table transactions (
   person_name text not null,
   amount numeric not null,
   interest numeric default 0,
+  interest_mode text check (interest_mode in ('fixed', 'percentage')) default 'fixed',
+  interest_period text check (interest_period in ('day', 'month', 'year')) default 'day',
   type text check (type in ('lending', 'collection')) default 'lending',
   date timestamp with time zone not null,
   created_at timestamp with time zone default now()
 );
+
+-- If you already created the table earlier, run this migration too:
+alter table transactions add column if not exists interest_mode text check (interest_mode in ('fixed', 'percentage')) default 'fixed';
+alter table transactions add column if not exists interest_period text check (interest_period in ('day', 'month', 'year')) default 'day';
 
 -- Enable Row Level Security
 alter table transactions enable row level security;

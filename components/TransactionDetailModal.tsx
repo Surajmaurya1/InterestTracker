@@ -1,9 +1,10 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, User, Calendar, CreditCard, TrendingUp, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { X, Calendar, CreditCard, TrendingUp, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Transaction } from "@/types/transaction";
 import { format, parseISO } from "date-fns";
+import { formatCurrency, formatInterestLabel, getMonthlyInterestProjection } from "@/lib/interest";
 
 interface TransactionDetailModalProps {
   transaction: Transaction | null;
@@ -14,7 +15,7 @@ interface TransactionDetailModalProps {
 export default function TransactionDetailModal({ transaction, isOpen, onClose }: TransactionDetailModalProps) {
   if (!transaction) return null;
 
-  const isLending = transaction.type !== 'collection';
+  const isLending = transaction.type !== "collection";
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -29,7 +30,6 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose }:
           </div>
 
           <div className="flex flex-col gap-8">
-            {/* Header / Person */}
             <div className="flex items-center gap-5 p-4 bg-white/5 rounded-3xl border border-white/5">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
                 isLending ? "bg-[#1A1A1D] text-zinc-400" : "bg-green-500/10 text-green-500"
@@ -44,7 +44,6 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose }:
               </div>
             </div>
 
-            {/* Info Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div className="p-5 bg-[#1A1A1D] rounded-3xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-zinc-500">
@@ -52,7 +51,7 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose }:
                   <span className="text-[10px] uppercase font-bold tracking-widest">Amount</span>
                 </div>
                 <span className={`text-xl font-bold ${!isLending ? "text-green-500" : "text-white"}`}>
-                  ₹{Number(transaction.amount).toLocaleString()}
+                  {formatCurrency(Number(transaction.amount))}
                 </span>
               </div>
 
@@ -67,24 +66,23 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose }:
               </div>
 
               {isLending && (
-                <div className="col-span-2 p-5 bg-[#1A1A1D] rounded-3xl flex items-center justify-between">
+                <div className="col-span-2 p-5 bg-[#1A1A1D] rounded-3xl flex items-center justify-between gap-4">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-zinc-500">
                       <TrendingUp size={14} />
-                      <span className="text-[10px] uppercase font-bold tracking-widest">Daily Interest</span>
+                      <span className="text-[10px] uppercase font-bold tracking-widest">Interest Setup</span>
                     </div>
-                    <span className="text-xl font-bold text-white tracking-widest">₹{transaction.interest} / day</span>
+                    <span className="text-xl font-bold text-white tracking-widest">{formatInterestLabel(transaction)}</span>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Monthly Projection</span>
-                    <span className="text-sm font-semibold text-zinc-400">₹{(transaction.interest * 30).toLocaleString()}</span>
+                  <div className="flex flex-col items-end text-right">
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">Estimated Monthly Interest</span>
+                    <span className="text-sm font-semibold text-zinc-400">{formatCurrency(getMonthlyInterestProjection(transaction))}</span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Action Buttons */}
-            <button 
+            <button
               onClick={onClose}
               className="mt-4 w-full h-14 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition-all active:scale-95"
             >

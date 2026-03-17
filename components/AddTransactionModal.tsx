@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Plus } from "lucide-react";
 import { addTransaction } from "@/lib/supabase";
 import { NewTransaction } from "@/types/transaction";
+import { INTEREST_PERIODS } from "@/lib/interest";
 
 interface AddTransactionModalProps {
   onSuccess: () => void;
@@ -18,18 +19,32 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
     person_name: "",
     amount: 0,
     interest: 0,
-    type: 'lending',
-    date: new Date().toISOString().split('T')[0],
+    interest_mode: "fixed",
+    interest_period: "day",
+    type: "lending",
+    date: new Date().toISOString().split("T")[0],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Client-side validation
+
     const name = formData.person_name.trim();
-    if (!name) { alert("Please enter a person name"); return; }
-    if (formData.amount <= 0) { alert("Amount must be greater than 0"); return; }
-    if (formData.type === 'lending' && formData.interest < 0) { alert("Interest cannot be negative"); return; }
+    if (!name) {
+      alert("Please enter a person name");
+      return;
+    }
+    if (formData.amount <= 0) {
+      alert("Amount must be greater than 0");
+      return;
+    }
+    if (formData.type === "lending" && formData.interest < 0) {
+      alert("Interest cannot be negative");
+      return;
+    }
+    if (formData.type === "lending" && formData.interest_mode === "percentage" && formData.interest > 100) {
+      alert("Interest percentage cannot be greater than 100");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -40,8 +55,10 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
         person_name: "",
         amount: 0,
         interest: 0,
-        type: 'lending',
-        date: new Date().toISOString().split('T')[0],
+        interest_mode: "fixed",
+        interest_period: "day",
+        type: "lending",
+        date: new Date().toISOString().split("T")[0],
       });
     } catch (error) {
       console.error("Error adding transaction:", error);
@@ -64,14 +81,13 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* Type Toggle */}
             <div className="flex bg-[#1A1A1D] p-1 rounded-2xl">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, type: 'lending' })}
+                onClick={() => setFormData({ ...formData, type: "lending" })}
                 className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                  formData.type === 'lending' 
-                    ? "bg-white text-black shadow-lg" 
+                  formData.type === "lending"
+                    ? "bg-white text-black shadow-lg"
                     : "text-zinc-500 hover:text-white"
                 }`}
               >
@@ -79,10 +95,10 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, type: 'collection' })}
+                onClick={() => setFormData({ ...formData, type: "collection", interest: 0, interest_mode: "fixed", interest_period: "day" })}
                 className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                  formData.type === 'collection' 
-                    ? "bg-white text-black shadow-lg" 
+                  formData.type === "collection"
+                    ? "bg-white text-black shadow-lg"
                     : "text-zinc-500 hover:text-white"
                 }`}
               >
@@ -96,17 +112,17 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                 required
                 type="text"
                 maxLength={100}
-                placeholder={formData.type === 'lending' ? "Who are you lending to?" : "From whom did you receive?"}
+                placeholder={formData.type === "lending" ? "Who are you lending to?" : "From whom did you receive?"}
                 className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
                 value={formData.person_name}
                 onChange={(e) => setFormData({ ...formData, person_name: e.target.value })}
               />
             </div>
 
-            <div className={formData.type === 'lending' ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
+            <div className="grid grid-cols-1 gap-4">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">
-                  {formData.type === 'lending' ? "Amount Lent (₹)" : "Amount Received (₹)"}
+                  {formData.type === "lending" ? "Amount Lent (₹)" : "Amount Received (₹)"}
                 </label>
                 <input
                   required
@@ -117,17 +133,75 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                   onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                 />
               </div>
-              {formData.type === 'lending' && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest (₹ / day)</label>
-                  <input
-                    required
-                    type="number"
-                    placeholder="0"
-                    className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
-                    value={formData.interest || ""}
-                    onChange={(e) => setFormData({ ...formData, interest: Number(e.target.value) })}
-                  />
+
+              {formData.type === "lending" && (
+                <div className="flex flex-col gap-4 rounded-3xl border border-[#1A1A1D] bg-[#0D0D0F] p-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest Type</label>
+                    <div className="flex bg-[#1A1A1D] p-1 rounded-2xl">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, interest_mode: "fixed" })}
+                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                          formData.interest_mode !== "percentage"
+                            ? "bg-white text-black shadow-lg"
+                            : "text-zinc-500 hover:text-white"
+                        }`}
+                      >
+                        INR Amount
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, interest_mode: "percentage" })}
+                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                          formData.interest_mode === "percentage"
+                            ? "bg-white text-black shadow-lg"
+                            : "text-zinc-500 hover:text-white"
+                        }`}
+                      >
+                        Percentage
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">
+                      {formData.interest_mode === "percentage" ? "Interest Rate (%)" : "Interest Amount (₹)"}
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      step={formData.interest_mode === "percentage" ? "0.01" : "1"}
+                      placeholder="0"
+                      className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
+                      value={formData.interest || ""}
+                      onChange={(e) => setFormData({ ...formData, interest: Number(e.target.value) })}
+                    />
+                    <span className="px-1 text-xs text-zinc-500">
+                      {formData.interest_mode === "percentage" ? "Example: 2 means 2% interest" : "Example: 500 means ₹500 interest"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest Period</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {INTEREST_PERIODS.map((period) => (
+                        <button
+                          key={period}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, interest_period: period })}
+                          className={`rounded-2xl py-3 text-xs font-bold uppercase tracking-wider transition-all ${
+                            formData.interest_period === period
+                              ? "bg-white text-black shadow-lg"
+                              : "bg-[#1A1A1D] text-zinc-500 hover:text-white"
+                          }`}
+                        >
+                          {period}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

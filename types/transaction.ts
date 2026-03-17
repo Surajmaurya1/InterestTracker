@@ -4,6 +4,8 @@ export interface Transaction {
   person_name: string;
   amount: number;
   interest: number;
+  interest_mode?: 'fixed' | 'percentage';
+  interest_period?: 'day' | 'month' | 'year';
   date: string;
   type: 'lending' | 'collection';
   created_at?: string;
