@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip, CartesianGrid } from "recharts";
 import { Transaction } from "@/types/transaction";
 import { format, parseISO, subDays, isSameDay } from "date-fns";
@@ -10,6 +10,12 @@ interface ChartCardProps {
 }
 
 export default function ChartCard({ transactions }: ChartCardProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Generate last 7 days to ensure chart always has data points
   const chartData = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), 6 - i));
@@ -29,6 +35,14 @@ export default function ChartCard({ transactions }: ChartCardProps) {
       };
     });
   }, [transactions]);
+
+  if (!isMounted) {
+    return (
+      <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 h-[280px] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/5 border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 h-[280px]">

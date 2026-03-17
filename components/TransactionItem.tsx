@@ -6,9 +6,10 @@ import { motion, useMotionValue, useTransform } from "framer-motion";
 interface TransactionItemProps {
   transaction: Transaction;
   onDelete: () => void;
+  onClick: () => void;
 }
 
-export default function TransactionItem({ transaction, onDelete }: TransactionItemProps) {
+export default function TransactionItem({ transaction, onDelete, onClick }: TransactionItemProps) {
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0]);
   const scale = useTransform(x, [-100, -50, 0], [1, 0.8, 0.5]);
@@ -33,7 +34,8 @@ export default function TransactionItem({ transaction, onDelete }: TransactionIt
         drag="x"
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={0.05}
-        className="relative z-10 flex items-center justify-between p-4 bg-[#111113] border border-[#1A1A1D] rounded-2xl hover:bg-[#1A1A1D] transition-colors group cursor-grab active:cursor-grabbing"
+        onClick={onClick}
+        className="relative z-10 flex items-center justify-between p-4 bg-[#111113] border border-[#1A1A1D] rounded-2xl hover:bg-[#1A1A1D] transition-colors group cursor-pointer active:cursor-grabbing"
       >
         <div className="flex items-center gap-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${

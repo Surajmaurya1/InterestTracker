@@ -9,6 +9,7 @@ import FloatingButton from "@/components/FloatingButton";
 import AddTransactionModal from "@/components/AddTransactionModal";
 import SettingsModal from "@/components/SettingsModal";
 import SecurityLock from "@/components/SecurityLock";
+import TransactionDetailModal from "@/components/TransactionDetailModal";
 import { fetchTransactions, deleteTransaction } from "@/lib/supabase";
 import { Transaction } from "@/types/transaction";
 
@@ -17,6 +18,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const loadData = async () => {
@@ -46,21 +48,23 @@ export default function Home() {
   }, []);
 
   const filteredTransactions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return transactions;
     return transactions.filter(t => 
-      t.person_name.toLowerCase().includes(searchQuery.toLowerCase())
+      t.person_name.toLowerCase().includes(query)
     );
   }, [transactions, searchQuery]);
 
   const stats = useMemo(() => {
     const totalGiven = transactions
-      .filter(t => t.type === 'lending')
+      .filter(t => t.type !== 'collection')
       .reduce((acc, curr) => acc + Number(curr.amount), 0);
     
     const totalCollected = transactions
       .filter(t => t.type === 'collection')
       .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
-    const lendingTransactions = transactions.filter(t => t.type === 'lending');
+    const lendingTransactions = transactions.filter(t => t.type !== 'collection');
     const avgInterest = lendingTransactions.length > 0 
       ? lendingTransactions.reduce((acc, curr) => acc + Number(curr.interest), 0) / lendingTransactions.length 
       : 0;
@@ -111,7 +115,11 @@ export default function Home() {
 
           {/* Recent Transactions */}
           <section>
-            <TransactionList transactions={filteredTransactions} onDelete={handleDelete} />
+            <TransactionList 
+              transactions={filteredTransactions} 
+              onDelete={handleDelete} 
+              onItemClick={setSelectedTransaction}
+            />
           </section>
         </div>
 
@@ -126,6 +134,12 @@ export default function Home() {
         <SettingsModal 
           isOpen={isSettingsOpen} 
           setIsOpen={setIsSettingsOpen} 
+        />
+
+        <TransactionDetailModal 
+          transaction={selectedTransaction}
+          isOpen={!!selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
         />
 
         {loading && (

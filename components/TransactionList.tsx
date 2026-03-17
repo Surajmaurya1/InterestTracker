@@ -4,9 +4,10 @@ import TransactionItem from "./TransactionItem";
 interface TransactionListProps {
   transactions: Transaction[];
   onDelete: (id: string) => void;
+  onItemClick: (transaction: Transaction) => void;
 }
 
-export default function TransactionList({ transactions, onDelete }: TransactionListProps) {
+export default function TransactionList({ transactions, onDelete, onItemClick }: TransactionListProps) {
   if (transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-zinc-500 gap-2 border border-dashed border-[#1A1A1D] rounded-3xl">
@@ -24,7 +25,12 @@ export default function TransactionList({ transactions, onDelete }: TransactionL
       </div>
       <div className="flex flex-col gap-3">
         {transactions.map((t) => (
-          <TransactionItem key={t.id} transaction={t} onDelete={() => onDelete(t.id)} />
+          <TransactionItem 
+            key={t.id} 
+            transaction={t} 
+            onDelete={() => onDelete(t.id)} 
+            onClick={() => onItemClick(t)}
+          />
         ))}
       </div>
     </div>
