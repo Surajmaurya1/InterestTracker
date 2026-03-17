@@ -18,6 +18,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
     person_name: "",
     amount: 0,
     interest: 0,
+    type: 'lending',
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -32,6 +33,7 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
         person_name: "",
         amount: 0,
         interest: 0,
+        type: 'lending',
         date: new Date().toISOString().split('T')[0],
       });
     } catch (error) {
@@ -55,21 +57,49 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {/* Type Toggle */}
+            <div className="flex bg-[#1A1A1D] p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, type: 'lending' })}
+                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  formData.type === 'lending' 
+                    ? "bg-white text-black shadow-lg" 
+                    : "text-zinc-500 hover:text-white"
+                }`}
+              >
+                Lending
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, type: 'collection' })}
+                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  formData.type === 'collection' 
+                    ? "bg-white text-black shadow-lg" 
+                    : "text-zinc-500 hover:text-white"
+                }`}
+              >
+                Received
+              </button>
+            </div>
+
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Person Name</label>
               <input
                 required
                 type="text"
-                placeholder="Who are you lending to?"
+                placeholder={formData.type === 'lending' ? "Who are you lending to?" : "From whom did you receive?"}
                 className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
                 value={formData.person_name}
                 onChange={(e) => setFormData({ ...formData, person_name: e.target.value })}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={formData.type === 'lending' ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Amount (₹)</label>
+                <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">
+                  {formData.type === 'lending' ? "Amount Lent (₹)" : "Amount Received (₹)"}
+                </label>
                 <input
                   required
                   type="number"
@@ -79,17 +109,19 @@ export default function AddTransactionModal({ onSuccess, isOpen, setIsOpen }: Ad
                   onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest (₹ / day)</label>
-                <input
-                  required
-                  type="number"
-                  placeholder="0"
-                  className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
-                  value={formData.interest || ""}
-                  onChange={(e) => setFormData({ ...formData, interest: Number(e.target.value) })}
-                />
-              </div>
+              {formData.type === 'lending' && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-medium text-zinc-500 uppercase tracking-widest px-1">Interest (₹ / day)</label>
+                  <input
+                    required
+                    type="number"
+                    placeholder="0"
+                    className="bg-[#1A1A1D] border border-transparent focus:border-zinc-700 outline-none rounded-2xl px-4 py-3 text-white placeholder:text-zinc-600 transition-all font-medium"
+                    value={formData.interest || ""}
+                    onChange={(e) => setFormData({ ...formData, interest: Number(e.target.value) })}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">

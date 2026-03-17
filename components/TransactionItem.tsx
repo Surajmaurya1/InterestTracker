@@ -1,4 +1,4 @@
-import { User, Trash2 } from "lucide-react";
+import { User, Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Transaction } from "@/types/transaction";
 import { format, parseISO } from "date-fns";
 import { motion, useMotionValue, useTransform } from "framer-motion";
@@ -12,6 +12,8 @@ export default function TransactionItem({ transaction, onDelete }: TransactionIt
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-100, -50, 0], [1, 0.5, 0]);
   const scale = useTransform(x, [-100, -50, 0], [1, 0.8, 0.5]);
+
+  const isLending = transaction.type !== 'collection';
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
@@ -34,8 +36,10 @@ export default function TransactionItem({ transaction, onDelete }: TransactionIt
         className="relative z-10 flex items-center justify-between p-4 bg-[#111113] border border-[#1A1A1D] rounded-2xl hover:bg-[#1A1A1D] transition-colors group cursor-grab active:cursor-grabbing"
       >
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#1A1A1D] rounded-xl flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors">
-            <User size={22} />
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+            isLending ? "bg-[#1A1A1D] text-zinc-400" : "bg-green-500/10 text-green-500"
+          }`}>
+            {isLending ? <ArrowUpRight size={22} /> : <ArrowDownLeft size={22} />}
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-white tracking-wide">{transaction.person_name}</span>
@@ -43,8 +47,15 @@ export default function TransactionItem({ transaction, onDelete }: TransactionIt
           </div>
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-base font-semibold text-white tracking-tight">₹{Number(transaction.amount).toLocaleString()}</span>
-          <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">₹{transaction.interest} / day</span>
+          <span className={`text-base font-semibold tracking-tight ${isLending ? "text-white" : "text-green-500"}`}>
+            {isLending ? "" : "+"}₹{Number(transaction.amount).toLocaleString()}
+          </span>
+          {isLending && (
+            <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">₹{transaction.interest} / day</span>
+          )}
+          {!isLending && (
+            <span className="text-[10px] font-bold text-green-500/50 uppercase tracking-widest">Received</span>
+          )}
         </div>
       </motion.div>
     </div>

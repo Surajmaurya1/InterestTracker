@@ -4,6 +4,7 @@ export interface Transaction {
   amount: number;
   interest: number;
   date: string;
+  type: 'lending' | 'collection';
   created_at?: string;
 }
 

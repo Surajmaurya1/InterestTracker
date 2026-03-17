@@ -52,13 +52,22 @@ export default function Home() {
   }, [transactions, searchQuery]);
 
   const stats = useMemo(() => {
-    const totalGiven = transactions.reduce((acc, curr) => acc + Number(curr.amount), 0);
-    const avgInterest = transactions.length > 0 
-      ? transactions.reduce((acc, curr) => acc + Number(curr.interest), 0) / transactions.length 
+    const totalGiven = transactions
+      .filter(t => t.type === 'lending')
+      .reduce((acc, curr) => acc + Number(curr.amount), 0);
+    
+    const totalCollected = transactions
+      .filter(t => t.type === 'collection')
+      .reduce((acc, curr) => acc + Number(curr.amount), 0);
+
+    const lendingTransactions = transactions.filter(t => t.type === 'lending');
+    const avgInterest = lendingTransactions.length > 0 
+      ? lendingTransactions.reduce((acc, curr) => acc + Number(curr.interest), 0) / lendingTransactions.length 
       : 0;
     
     return {
       totalGiven,
+      totalCollected,
       count: transactions.length,
       avgInterest: avgInterest.toFixed(1)
     };
@@ -75,11 +84,16 @@ export default function Home() {
         <div className="px-6 flex flex-col gap-8 mt-4">
           {/* Main Stats Card */}
           <section className="flex flex-col gap-4">
-            <StatsCard 
-              label="Total Given" 
-              value={`₹${stats.totalGiven.toLocaleString()}`} 
-              subValue="" 
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <StatsCard 
+                label="Total Lent" 
+                value={`₹${stats.totalGiven.toLocaleString()}`} 
+              />
+              <StatsCard 
+                label="Total Received" 
+                value={`₹${stats.totalCollected.toLocaleString()}`} 
+              />
+            </div>
             <ChartCard transactions={transactions} />
           </section>
 

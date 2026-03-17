@@ -48,7 +48,8 @@ create table transactions (
   id uuid default gen_random_uuid() primary key,
   person_name text not null,
   amount numeric not null,
-  interest numeric not null, -- Daily rupees amount
+  interest numeric default 0, -- Daily rupees amount
+  type text check (type in ('lending', 'collection')) default 'lending',
   date timestamp with time zone not null,
   created_at timestamp with time zone default now()
 );
