@@ -37,9 +37,9 @@ export default function TransactionItem({ transaction, onDelete }: TransactionIt
           <div className="w-12 h-12 bg-[#1A1A1D] rounded-xl flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors">
             <User size={22} />
           </div>
-          <div className="flex flex-col">
-            <span className="font-medium text-white">{transaction.person_name}</span>
-            <span className="text-xs text-zinc-500">{format(parseISO(transaction.date), "MMM dd, yyyy")}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-white tracking-wide">{transaction.person_name}</span>
+            <span className="text-[11px] font-medium text-zinc-500">{format(parseISO(transaction.date), "MMM dd, yyyy")}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-0.5">
