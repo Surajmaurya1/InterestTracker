@@ -18,9 +18,9 @@ export default function Header({ onSearch, onSettings }: HeaderProps) {
   };
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 relative h-16">
+    <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 relative h-14 sm:h-16">
       {isSearching ? (
-        <div className="absolute inset-0 px-6 flex items-center bg-background z-20 animate-in slide-in-from-top duration-200">
+        <div className="absolute inset-0 px-4 sm:px-6 flex items-center bg-background z-20 animate-in slide-in-from-top duration-200">
           <div className="flex-1 flex items-center gap-3 bg-[#111113] border border-[#1A1A1D] rounded-2xl px-4 py-2">
             <Search size={18} className="text-zinc-500" />
             <input 

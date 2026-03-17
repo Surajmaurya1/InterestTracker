@@ -45,13 +45,13 @@ export default function ChartCard({ transactions }: ChartCardProps) {
   }
 
   return (
-    <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-6 h-[280px]">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-[#111113] border border-[#1A1A1D] rounded-2xl sm:rounded-3xl p-4 sm:p-6 h-[220px] sm:h-[280px]">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Lending Activity</h3>
         <span className="text-[10px] text-zinc-600 font-medium">Last 7 Days</span>
       </div>
       
-      <div className="h-[200px] w-full">
+      <div className="h-[150px] sm:h-[200px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="#1A1A1D" strokeDasharray="3 3" />

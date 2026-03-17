@@ -117,10 +117,10 @@ export default function Home() {
           onSettings={() => setIsSettingsOpen(true)} 
         />
         
-        <div className="px-6 flex flex-col gap-8 mt-4">
+        <div className="px-4 sm:px-6 flex flex-col gap-5 sm:gap-8 mt-2 sm:mt-4">
           {/* Main Stats Card */}
           <section className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <StatsCard 
                 label="Total Lent" 
                 value={`₹${stats.totalGiven.toLocaleString()}`} 
@@ -134,14 +134,14 @@ export default function Home() {
           </section>
 
           {/* Mini Stats Grid */}
-          <section className="grid grid-cols-2 gap-4">
-            <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-5 flex flex-col gap-1">
+          <section className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-[#111113] border border-[#1A1A1D] rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col gap-1">
               <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Transactions</span>
-              <span className="text-2xl font-semibold">{stats.count}</span>
+              <span className="text-xl sm:text-2xl font-semibold">{stats.count}</span>
             </div>
-            <div className="bg-[#111113] border border-[#1A1A1D] rounded-3xl p-5 flex flex-col gap-1">
+            <div className="bg-[#111113] border border-[#1A1A1D] rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col gap-1">
               <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Avg. Daily Interest</span>
-              <span className="text-2xl font-semibold">₹{stats.avgInterest}</span>
+              <span className="text-xl sm:text-2xl font-semibold">₹{stats.avgInterest}</span>
             </div>
           </section>
 
@@ -156,6 +156,7 @@ export default function Home() {
         </div>
 
         <FloatingButton onClick={() => setIsModalOpen(true)} />
+
         
         <AddTransactionModal 
           isOpen={isModalOpen} 
